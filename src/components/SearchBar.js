@@ -1,10 +1,12 @@
 "use client";
 
-export default function SearchBar({ value, onChange }) {
+export default function SearchBar({ value, onChange, placeholder = "Rechercher un contact..." }) {
+  const inputId = placeholder.includes("tache") ? "task-search" : "contact-search";
+
   return (
     <div className="relative rounded-2xl bg-white/5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
-      <label htmlFor="contact-search" className="sr-only">
-        Rechercher un contact
+      <label htmlFor={inputId} className="sr-only">
+        {placeholder}
       </label>
 
       <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-white/50">
@@ -15,11 +17,11 @@ export default function SearchBar({ value, onChange }) {
       </span>
 
       <input
-        id="contact-search"
+        id={inputId}
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Rechercher un contact..."
+        placeholder={placeholder}
         className="h-12 w-full rounded-2xl bg-transparent pl-12 pr-12 text-sm text-white outline-none ring-1 ring-transparent placeholder:text-white/45 focus:ring-violet-300/60 sm:text-base"
       />
 

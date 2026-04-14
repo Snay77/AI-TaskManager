@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import AddTaskForm from "../../components/AddTaskForm";
+import SearchBar from "../../components/SearchBar";
 import TaskList from "../../components/TaskList";
 
 const initialTasks = [
@@ -30,11 +31,26 @@ const initialTasks = [
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState(initialTasks);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const remainingCount = useMemo(
     () => tasks.filter((task) => !task.completed).length,
     [tasks]
   );
+
+  const filteredTasks = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      return tasks;
+    }
+
+    return tasks.filter((task) => {
+      const titleMatch = task.title.toLowerCase().includes(query);
+      const priorityMatch = task.priority.toLowerCase().includes(query);
+      const statusMatch = (task.completed ? "terminee" : "en cours").includes(query);
+      return titleMatch || priorityMatch || statusMatch;
+    });
+  }, [searchQuery, tasks]);
 
   const toggleTask = (id) => {
     setTasks((current) =>
@@ -79,7 +95,15 @@ export default function TasksPage() {
       <AddTaskForm onAddTask={addTask} />
 
       <div className="mt-4 sm:mt-5">
-        <TaskList tasks={tasks} onToggle={toggleTask} onDelete={deleteTask} />
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher une tache..."
+        />
+      </div>
+
+      <div className="mt-4 sm:mt-5">
+        <TaskList tasks={filteredTasks} onToggle={toggleTask} onDelete={deleteTask} />
       </div>
     </section>
   );
