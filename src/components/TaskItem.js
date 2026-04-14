@@ -9,6 +9,7 @@ const priorityStyles = {
 export default function TaskItem({
   title,
   description,
+  date,
   priority,
   completed,
   onToggle,
@@ -49,6 +50,16 @@ export default function TaskItem({
           {description ? (
             <p className={`mt-2 text-sm text-white/70 sm:text-base ${completed ? "line-through opacity-60" : ""}`}>
               {description}
+            </p>
+          ) : null}
+
+          {date ? (
+            <p
+              className={`mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-violet-200/90 ${
+                completed ? "line-through opacity-60" : ""
+              }`}
+            >
+              Echeance: {date}
             </p>
           ) : null}
         </div>

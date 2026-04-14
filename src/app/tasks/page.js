@@ -11,6 +11,7 @@ const initialTasks = [
     id: 1,
     title: "Finaliser la proposition client",
     description: "Soumettre la version finale au client avant 17h.",
+    date: "2026-04-18",
     priority: "haute",
     completed: false,
     createdAt: "2026-04-13T08:30:00.000Z",
@@ -19,6 +20,7 @@ const initialTasks = [
     id: 2,
     title: "Revue UX mobile",
     description: "Verifier les interactions sur ecrans <= 640px.",
+    date: "2026-04-20",
     priority: "moyenne",
     completed: false,
     createdAt: "2026-04-13T10:15:00.000Z",
@@ -27,6 +29,7 @@ const initialTasks = [
     id: 3,
     title: "Nettoyer le backlog",
     description: "Fermer les tickets obsoletes et reprioriser les autres.",
+    date: "2026-04-22",
     priority: "basse",
     completed: true,
     createdAt: "2026-04-12T16:45:00.000Z",
@@ -38,6 +41,8 @@ export default function TasksPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("priority");
+  const [priorityDirection, setPriorityDirection] = useState("asc");
+  const [dateDirection, setDateDirection] = useState("desc");
 
   const remainingCount = useMemo(
     () => tasks.filter((task) => !task.completed).length,
@@ -72,13 +77,19 @@ export default function TasksPage() {
 
     const copy = [...filteredByStatus];
     if (sortOrder === "date") {
-      return copy.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const sortedByDate = copy.sort((a, b) => {
+        const aDate = new Date(a.date || a.createdAt);
+        const bDate = new Date(b.date || b.createdAt);
+        return bDate - aDate;
+      });
+      return dateDirection === "desc" ? sortedByDate : sortedByDate.reverse();
     }
 
-    return copy.sort(
+    const sorted = copy.sort(
       (a, b) => (priorityRank[a.priority] || 99) - (priorityRank[b.priority] || 99)
     );
-  }, [filteredByStatus, sortOrder]);
+    return priorityDirection === "asc" ? sorted : sorted.reverse();
+  }, [dateDirection, filteredByStatus, priorityDirection, sortOrder]);
 
   const toggleTask = (id) => {
     setTasks((current) =>
@@ -92,11 +103,12 @@ export default function TasksPage() {
     setTasks((current) => current.filter((task) => task.id !== id));
   };
 
-  const addTask = ({ title, priority }) => {
+  const addTask = ({ title, description, date, priority }) => {
     const newTask = {
       id: Date.now(),
       title,
-      description: "Nouvelle tache ajoutee depuis le formulaire.",
+      description: description || "Nouvelle tache ajoutee depuis le formulaire.",
+      date: date || new Date().toISOString().slice(0, 10),
       priority,
       completed: false,
       createdAt: new Date().toISOString(),
@@ -135,7 +147,7 @@ export default function TasksPage() {
         <FilterBar currentFilter={filter} onFilterChange={setFilter} />
       </div>
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         <label htmlFor="task-sort" className="sr-only">
           Trier les taches
         </label>
@@ -152,6 +164,78 @@ export default function TasksPage() {
             Trier par date
           </option>
         </select>
+
+        {sortOrder === "priority" ? (
+          <button
+            type="button"
+            onClick={() =>
+              setPriorityDirection((current) => (current === "asc" ? "desc" : "asc"))
+            }
+            aria-label={
+              priorityDirection === "asc"
+                ? "Passer le tri priorité en descendant"
+                : "Passer le tri priorité en ascendant"
+            }
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-white/10 px-4 text-sm font-semibold text-white ring-1 ring-white/10 transition hover:bg-white/15"
+          >
+            {priorityDirection === "asc" ? "Ascendant" : "Descendant"}
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              {priorityDirection === "asc" ? (
+                <>
+                  <path d="M12 4v16" />
+                  <path d="m7 9 5-5 5 5" />
+                </>
+              ) : (
+                <>
+                  <path d="M12 4v16" />
+                  <path d="m7 15 5 5 5-5" />
+                </>
+              )}
+            </svg>
+          </button>
+        ) : null}
+
+        {sortOrder === "date" ? (
+          <button
+            type="button"
+            onClick={() =>
+              setDateDirection((current) => (current === "asc" ? "desc" : "asc"))
+            }
+            aria-label={
+              dateDirection === "asc"
+                ? "Passer le tri date en descendant"
+                : "Passer le tri date en ascendant"
+            }
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-white/10 px-4 text-sm font-semibold text-white ring-1 ring-white/10 transition hover:bg-white/15"
+          >
+            {dateDirection === "asc" ? "Date asc." : "Date desc."}
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              {dateDirection === "asc" ? (
+                <>
+                  <path d="M12 4v16" />
+                  <path d="m7 9 5-5 5 5" />
+                </>
+              ) : (
+                <>
+                  <path d="M12 4v16" />
+                  <path d="m7 15 5 5 5-5" />
+                </>
+              )}
+            </svg>
+          </button>
+        ) : null}
       </div>
 
       <div className="mt-4 sm:mt-5">

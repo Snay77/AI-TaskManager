@@ -4,6 +4,8 @@ import { useState } from "react";
 
 export default function AddTaskForm({ onAddTask }) {
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [date, setDate] = useState("");
   const [priority, setPriority] = useState("moyenne");
 
   const handleSubmit = (event) => {
@@ -15,10 +17,14 @@ export default function AddTaskForm({ onAddTask }) {
 
     onAddTask({
       title: cleanTitle,
+      description: description.trim(),
+      date,
       priority,
     });
 
     setTitle("");
+    setDescription("");
+    setDate("");
     setPriority("moyenne");
   };
 
@@ -27,7 +33,7 @@ export default function AddTaskForm({ onAddTask }) {
       onSubmit={handleSubmit}
       className="mt-5 rounded-3xl bg-white/4 p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] sm:mt-6 sm:p-5"
     >
-      <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
+      <div className="grid gap-3 md:grid-cols-[1fr_1fr]">
         <input
           type="text"
           value={title}
@@ -37,6 +43,17 @@ export default function AddTaskForm({ onAddTask }) {
           aria-label="Titre de la tache"
         />
 
+        <input
+          type="text"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder="Description (optionnelle)"
+          className="h-11 rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/10 placeholder:text-white/45 focus:ring-lime-300/60"
+          aria-label="Description de la tache"
+        />
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-[180px_1fr_auto]">
         <select
           value={priority}
           onChange={(event) => setPriority(event.target.value)}
@@ -53,6 +70,14 @@ export default function AddTaskForm({ onAddTask }) {
             Basse
           </option>
         </select>
+
+        <input
+          type="date"
+          value={date}
+          onChange={(event) => setDate(event.target.value)}
+          className="h-11 rounded-xl bg-white/8 px-4 text-sm font-semibold text-white outline-none ring-1 ring-white/10 focus:ring-lime-300/60"
+          aria-label="Date de la tache"
+        />
 
         <button
           type="submit"

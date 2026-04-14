@@ -16,6 +16,7 @@ export default function TaskList({ tasks, onToggle, onDelete }) {
           key={task.id}
           title={task.title}
           description={task.description}
+          date={task.date}
           priority={task.priority}
           completed={task.completed}
           onToggle={() => onToggle(task.id)}
