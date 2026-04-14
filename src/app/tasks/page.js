@@ -1,14 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import AddTaskForm from "../../components/AddTaskForm";
 import FilterBar from "../../components/FilterBar";
 import SearchBar from "../../components/SearchBar";
 import TaskList from "../../components/TaskList";
 
+const createTaskId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
 const initialTasks = [
   {
-    id: 1,
+    id: "task-1",
     title: "Finaliser la proposition client",
     description: "Soumettre la version finale au client avant 17h.",
     date: "2026-04-18",
@@ -17,7 +24,7 @@ const initialTasks = [
     createdAt: "2026-04-13T08:30:00.000Z",
   },
   {
-    id: 2,
+    id: "task-2",
     title: "Revue UX mobile",
     description: "Verifier les interactions sur ecrans <= 640px.",
     date: "2026-04-20",
@@ -26,7 +33,7 @@ const initialTasks = [
     createdAt: "2026-04-13T10:15:00.000Z",
   },
   {
-    id: 3,
+    id: "task-3",
     title: "Nettoyer le backlog",
     description: "Fermer les tickets obsoletes et reprioriser les autres.",
     date: "2026-04-22",
@@ -35,6 +42,12 @@ const initialTasks = [
     createdAt: "2026-04-12T16:45:00.000Z",
   },
 ];
+
+const priorityRank = {
+  basse: 1,
+  moyenne: 2,
+  haute: 3,
+};
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState(initialTasks);
@@ -69,12 +82,6 @@ export default function TasksPage() {
   }, [filter, searchedTasks]);
 
   const filteredTasks = useMemo(() => {
-    const priorityRank = {
-      basse: 1,
-      moyenne: 2,
-      haute: 3,
-    };
-
     const copy = [...filteredByStatus];
     if (sortOrder === "date") {
       const sortedByDate = copy.sort((a, b) => {
@@ -91,21 +98,21 @@ export default function TasksPage() {
     return priorityDirection === "asc" ? sorted : sorted.reverse();
   }, [dateDirection, filteredByStatus, priorityDirection, sortOrder]);
 
-  const toggleTask = (id) => {
+  const toggleTask = useCallback((id) => {
     setTasks((current) =>
       current.map((task) =>
         task.id === id ? { ...task, completed: !task.completed } : task
       )
     );
-  };
+  }, []);
 
-  const deleteTask = (id) => {
+  const deleteTask = useCallback((id) => {
     setTasks((current) => current.filter((task) => task.id !== id));
-  };
+  }, []);
 
-  const addTask = ({ title, description, date, priority }) => {
+  const addTask = useCallback(({ title, description, date, priority }) => {
     const newTask = {
-      id: Date.now(),
+      id: createTaskId(),
       title,
       description: description || "Nouvelle tache ajoutee depuis le formulaire.",
       date: date || new Date().toISOString().slice(0, 10),
@@ -114,7 +121,15 @@ export default function TasksPage() {
       createdAt: new Date().toISOString(),
     };
     setTasks((current) => [newTask, ...current]);
-  };
+  }, []);
+
+  const togglePriorityDirection = useCallback(() => {
+    setPriorityDirection((current) => (current === "asc" ? "desc" : "asc"));
+  }, []);
+
+  const toggleDateDirection = useCallback(() => {
+    setDateDirection((current) => (current === "asc" ? "desc" : "asc"));
+  }, []);
 
   return (
     <section className="mx-auto w-full max-w-[1140px] px-3 pb-28 pt-6 sm:px-4">
@@ -144,98 +159,16 @@ export default function TasksPage() {
       </div>
 
       <div className="mt-3">
-        <FilterBar currentFilter={filter} onFilterChange={setFilter} />
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <label htmlFor="task-sort" className="sr-only">
-          Trier les taches
-        </label>
-        <select
-          id="task-sort"
-          value={sortOrder}
-          onChange={(event) => setSortOrder(event.target.value)}
-          className="h-11 rounded-xl bg-white/10 px-4 text-sm font-semibold text-white outline-none ring-1 ring-white/10 focus:ring-violet-300/60"
-        >
-          <option value="priority" className="text-zinc-900">
-            Trier par priorité
-          </option>
-          <option value="date" className="text-zinc-900">
-            Trier par date
-          </option>
-        </select>
-
-        {sortOrder === "priority" ? (
-          <button
-            type="button"
-            onClick={() =>
-              setPriorityDirection((current) => (current === "asc" ? "desc" : "asc"))
-            }
-            aria-label={
-              priorityDirection === "asc"
-                ? "Passer le tri priorité en descendant"
-                : "Passer le tri priorité en ascendant"
-            }
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-white/10 px-4 text-sm font-semibold text-white ring-1 ring-white/10 transition hover:bg-white/15"
-          >
-            {priorityDirection === "asc" ? "Ascendant" : "Descendant"}
-            <svg
-              viewBox="0 0 24 24"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              {priorityDirection === "asc" ? (
-                <>
-                  <path d="M12 4v16" />
-                  <path d="m7 9 5-5 5 5" />
-                </>
-              ) : (
-                <>
-                  <path d="M12 4v16" />
-                  <path d="m7 15 5 5 5-5" />
-                </>
-              )}
-            </svg>
-          </button>
-        ) : null}
-
-        {sortOrder === "date" ? (
-          <button
-            type="button"
-            onClick={() =>
-              setDateDirection((current) => (current === "asc" ? "desc" : "asc"))
-            }
-            aria-label={
-              dateDirection === "asc"
-                ? "Passer le tri date en descendant"
-                : "Passer le tri date en ascendant"
-            }
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-white/10 px-4 text-sm font-semibold text-white ring-1 ring-white/10 transition hover:bg-white/15"
-          >
-            {dateDirection === "asc" ? "Date asc." : "Date desc."}
-            <svg
-              viewBox="0 0 24 24"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              {dateDirection === "asc" ? (
-                <>
-                  <path d="M12 4v16" />
-                  <path d="m7 9 5-5 5 5" />
-                </>
-              ) : (
-                <>
-                  <path d="M12 4v16" />
-                  <path d="m7 15 5 5 5-5" />
-                </>
-              )}
-            </svg>
-          </button>
-        ) : null}
+        <FilterBar
+          currentFilter={filter}
+          onFilterChange={setFilter}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          priorityDirection={priorityDirection}
+          onPriorityDirectionToggle={togglePriorityDirection}
+          dateDirection={dateDirection}
+          onDateDirectionToggle={toggleDateDirection}
+        />
       </div>
 
       <div className="mt-4 sm:mt-5">

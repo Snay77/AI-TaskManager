@@ -1,4 +1,5 @@
 "use client";
+import { memo } from "react";
 
 const priorityStyles = {
   haute: "bg-red-500/20 text-red-200",
@@ -6,7 +7,7 @@ const priorityStyles = {
   basse: "bg-emerald-500/20 text-emerald-100",
 };
 
-export default function TaskItem({
+function TaskItem({
   title,
   description,
   date,
@@ -62,6 +63,7 @@ export default function TaskItem({
               Echeance: {date}
             </p>
           ) : null}
+
         </div>
 
         <button
@@ -76,3 +78,5 @@ export default function TaskItem({
     </article>
   );
 }
+
+export default memo(TaskItem);
