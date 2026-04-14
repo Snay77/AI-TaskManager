@@ -13,6 +13,7 @@ const initialTasks = [
     description: "Soumettre la version finale au client avant 17h.",
     priority: "haute",
     completed: false,
+    createdAt: "2026-04-13T08:30:00.000Z",
   },
   {
     id: 2,
@@ -20,6 +21,7 @@ const initialTasks = [
     description: "Verifier les interactions sur ecrans <= 640px.",
     priority: "moyenne",
     completed: false,
+    createdAt: "2026-04-13T10:15:00.000Z",
   },
   {
     id: 3,
@@ -27,13 +29,15 @@ const initialTasks = [
     description: "Fermer les tickets obsoletes et reprioriser les autres.",
     priority: "basse",
     completed: true,
+    createdAt: "2026-04-12T16:45:00.000Z",
   },
 ];
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState(initialTasks);
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentFilter, setCurrentFilter] = useState("toutes");
+  const [filter, setFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("priority");
 
   const remainingCount = useMemo(
     () => tasks.filter((task) => !task.completed).length,
@@ -46,23 +50,35 @@ export default function TasksPage() {
       return tasks;
     }
 
-    return tasks.filter((task) => {
-      const titleMatch = task.title.toLowerCase().includes(query);
-      const priorityMatch = task.priority.toLowerCase().includes(query);
-      const statusMatch = (task.completed ? "terminee" : "en cours").includes(query);
-      return titleMatch || priorityMatch || statusMatch;
-    });
+    return tasks.filter((task) => task.title.toLowerCase().includes(query));
   }, [searchQuery, tasks]);
 
-  const filteredTasks = useMemo(() => {
-    if (currentFilter === "actives") {
+  const filteredByStatus = useMemo(() => {
+    if (filter === "active") {
       return searchedTasks.filter((task) => !task.completed);
     }
-    if (currentFilter === "completes") {
+    if (filter === "completed") {
       return searchedTasks.filter((task) => task.completed);
     }
     return searchedTasks;
-  }, [currentFilter, searchedTasks]);
+  }, [filter, searchedTasks]);
+
+  const filteredTasks = useMemo(() => {
+    const priorityRank = {
+      basse: 1,
+      moyenne: 2,
+      haute: 3,
+    };
+
+    const copy = [...filteredByStatus];
+    if (sortOrder === "date") {
+      return copy.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    return copy.sort(
+      (a, b) => (priorityRank[a.priority] || 99) - (priorityRank[b.priority] || 99)
+    );
+  }, [filteredByStatus, sortOrder]);
 
   const toggleTask = (id) => {
     setTasks((current) =>
@@ -83,6 +99,7 @@ export default function TasksPage() {
       description: "Nouvelle tache ajoutee depuis le formulaire.",
       priority,
       completed: false,
+      createdAt: new Date().toISOString(),
     };
     setTasks((current) => [newTask, ...current]);
   };
@@ -115,7 +132,26 @@ export default function TasksPage() {
       </div>
 
       <div className="mt-3">
-        <FilterBar currentFilter={currentFilter} onFilterChange={setCurrentFilter} />
+        <FilterBar currentFilter={filter} onFilterChange={setFilter} />
+      </div>
+
+      <div className="mt-3">
+        <label htmlFor="task-sort" className="sr-only">
+          Trier les taches
+        </label>
+        <select
+          id="task-sort"
+          value={sortOrder}
+          onChange={(event) => setSortOrder(event.target.value)}
+          className="h-11 rounded-xl bg-white/10 px-4 text-sm font-semibold text-white outline-none ring-1 ring-white/10 focus:ring-violet-300/60"
+        >
+          <option value="priority" className="text-zinc-900">
+            Trier par priorité
+          </option>
+          <option value="date" className="text-zinc-900">
+            Trier par date
+          </option>
+        </select>
       </div>
 
       <div className="mt-4 sm:mt-5">

@@ -1,9 +1,9 @@
 "use client";
 
 const filters = [
-  { id: "toutes", label: "Toutes" },
-  { id: "actives", label: "Actives" },
-  { id: "completes", label: "Complétées" },
+  { id: "all", label: "Toutes" },
+  { id: "active", label: "Actives" },
+  { id: "completed", label: "Complétées" },
 ];
 
 export default function FilterBar({ currentFilter, onFilterChange }) {
