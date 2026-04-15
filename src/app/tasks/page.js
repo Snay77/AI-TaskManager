@@ -1,63 +1,50 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AddTaskForm from "../../components/AddTaskForm";
 import AuthGuard from "../../components/AuthGuard";
 import Dashboard from "../../components/Dashboard";
 import FilterBar from "../../components/FilterBar";
 import SearchBar from "../../components/SearchBar";
 import TaskList from "../../components/TaskList";
-
-const createTaskId = () => {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
-
-const initialTasks = [
-  {
-    id: "task-1",
-    title: "Finaliser la proposition client",
-    description: "Soumettre la version finale au client avant 17h.",
-    date: "2026-04-18",
-    priority: "haute",
-    completed: false,
-    createdAt: "2026-04-13T08:30:00.000Z",
-  },
-  {
-    id: "task-2",
-    title: "Revue UX mobile",
-    description: "Verifier les interactions sur ecrans <= 640px.",
-    date: "2026-04-20",
-    priority: "moyenne",
-    completed: false,
-    createdAt: "2026-04-13T10:15:00.000Z",
-  },
-  {
-    id: "task-3",
-    title: "Nettoyer le backlog",
-    description: "Fermer les tickets obsoletes et reprioriser les autres.",
-    date: "2026-04-22",
-    priority: "basse",
-    completed: true,
-    createdAt: "2026-04-12T16:45:00.000Z",
-  },
-];
+import { useAuth } from "../../contexts/AuthContext";
+import { addTask, deleteTask, subscribeToTasks, updateTask } from "../../services/taskService";
 
 const priorityRank = {
-  basse: 1,
-  moyenne: 2,
-  haute: 3,
+  low: 1,
+  medium: 2,
+  high: 3,
 };
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState(initialTasks);
+  const { user } = useAuth();
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("priority");
   const [priorityDirection, setPriorityDirection] = useState("asc");
   const [dateDirection, setDateDirection] = useState("desc");
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const unsubscribe = subscribeToTasks(user.uid, (freshTasks) => {
+        setTasks(freshTasks);
+        setLoading(false);
+      });
+
+      return unsubscribe;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors du chargement des taches.");
+      setLoading(false);
+    }
+  }, [user?.uid]);
 
   const remainingCount = useMemo(
     () => tasks.filter((task) => !task.completed).length,
@@ -70,7 +57,10 @@ export default function TasksPage() {
       return tasks;
     }
 
-    return tasks.filter((task) => task.title.toLowerCase().includes(query));
+    return tasks.filter((task) => 
+      task.title.toLowerCase().includes(query) ||
+      (task.description && task.description.toLowerCase().includes(query))
+    );
   }, [searchQuery, tasks]);
 
   const filteredByStatus = useMemo(() => {
@@ -100,30 +90,47 @@ export default function TasksPage() {
     return priorityDirection === "asc" ? sorted : sorted.reverse();
   }, [dateDirection, filteredByStatus, priorityDirection, sortOrder]);
 
-  const toggleTask = useCallback((id) => {
-    setTasks((current) =>
-      current.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
-  }, []);
+  const toggleTask = useCallback(
+    async (id) => {
+      if (!user?.uid) return;
 
-  const deleteTask = useCallback((id) => {
-    setTasks((current) => current.filter((task) => task.id !== id));
-  }, []);
+      try {
+        const task = tasks.find((t) => t.id === id);
+        if (task) {
+          await updateTask(user.uid, id, { completed: !task.completed });
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erreur lors de la mise a jour.");
+      }
+    },
+    [tasks, user?.uid]
+  );
 
-  const addTask = useCallback(({ title, description, date, priority }) => {
-    const newTask = {
-      id: createTaskId(),
-      title,
-      description: description || "Nouvelle tache ajoutee depuis le formulaire.",
-      date: date || new Date().toISOString().slice(0, 10),
-      priority,
-      completed: false,
-      createdAt: new Date().toISOString(),
-    };
-    setTasks((current) => [newTask, ...current]);
-  }, []);
+  const handleDeleteTask = useCallback(
+    async (id) => {
+      if (!user?.uid) return;
+
+      try {
+        await deleteTask(user.uid, id);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erreur lors de la suppression.");
+      }
+    },
+    [user?.uid]
+  );
+
+  const handleAddTask = useCallback(
+    async ({ title, priority, description, dueDate }) => {
+      if (!user?.uid) throw new Error("Utilisateur non identifie.");
+
+      try {
+        await addTask(user.uid, { title, priority, description, dueDate });
+      } catch (err) {
+        throw err;
+      }
+    },
+    [user?.uid]
+  );
 
   const togglePriorityDirection = useCallback(() => {
     setPriorityDirection((current) => (current === "asc" ? "desc" : "asc"));
@@ -135,7 +142,13 @@ export default function TasksPage() {
 
   return (
     <AuthGuard>
-      <section className="mx-auto w-full max-w-[1140px] px-3 pb-28 pt-6 sm:px-4">
+      <section className="mx-auto w-full max-w-285 px-3 pb-28 pt-6 sm:px-4">
+      {error ? (
+        <div className="mb-5 rounded-3xl bg-red-500/15 p-4 text-red-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" role="alert">
+          <p className="text-sm font-semibold">{error}</p>
+        </div>
+      ) : null}
+
       <header className="rounded-3xl bg-linear-to-br from-violet-600/20 via-slate-950 to-slate-900 p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-widest text-violet-200">
           TaskForce / Liste des taches
@@ -151,7 +164,7 @@ export default function TasksPage() {
         </div>
       </header>
 
-      <AddTaskForm onAddTask={addTask} />
+      <AddTaskForm onAddTask={handleAddTask} />
 
       <div className="mt-4 sm:mt-5">
         <Dashboard tasks={tasks} />
@@ -179,7 +192,14 @@ export default function TasksPage() {
       </div>
 
       <div className="mt-4 sm:mt-5">
-        <TaskList tasks={filteredTasks} onToggle={toggleTask} onDelete={deleteTask} />
+        {loading ? (
+          <div className="rounded-3xl bg-white/4 p-8 text-center text-white/75 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.08em] text-violet-200">Chargement</p>
+            <p className="mt-3 text-base font-medium">Chargement de tes taches...</p>
+          </div>
+        ) : (
+          <TaskList tasks={filteredTasks} onToggle={toggleTask} onDelete={handleDeleteTask} />
+        )}
       </div>
       </section>
     </AuthGuard>

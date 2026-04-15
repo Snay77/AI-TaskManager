@@ -2,21 +2,28 @@
 import { memo } from "react";
 
 const priorityStyles = {
-  haute: "bg-red-500/20 text-red-200",
-  moyenne: "bg-amber-400/20 text-amber-100",
-  basse: "bg-emerald-500/20 text-emerald-100",
+  high: "bg-red-500/20 text-red-200",
+  medium: "bg-amber-400/20 text-amber-100",
+  low: "bg-emerald-500/20 text-emerald-100",
+};
+
+const priorityLabels = {
+  high: "Haute",
+  medium: "Moyenne",
+  low: "Basse",
 };
 
 function TaskItem({
   title,
   description,
-  date,
+  dueDate,
   priority,
   completed,
   onToggle,
   onDelete,
 }) {
-  const badgeStyle = priorityStyles[priority] || priorityStyles.moyenne;
+  const badgeStyle = priorityStyles[priority] || priorityStyles.medium;
+  const badgeLabel = priorityLabels[priority] || "Moyenne";
 
   return (
     <article className="group rounded-3xl bg-white/4 p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] transition hover:bg-white/[0.07] sm:p-5">
@@ -44,7 +51,7 @@ function TaskItem({
             <span
               className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${badgeStyle}`}
             >
-              {priority}
+              {badgeLabel}
             </span>
           </div>
 
@@ -54,13 +61,13 @@ function TaskItem({
             </p>
           ) : null}
 
-          {date ? (
+          {dueDate ? (
             <p
               className={`mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-violet-200/90 ${
                 completed ? "line-through opacity-60" : ""
               }`}
             >
-              Echeance: {date}
+              Echeance: {new Date(dueDate).toLocaleDateString("fr-FR")}
             </p>
           ) : null}
 

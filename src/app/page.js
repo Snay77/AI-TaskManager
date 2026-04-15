@@ -1,26 +1,38 @@
-import AuthGuard from "../components/AuthGuard";
+"use client";
 
-export default function Home() {
-  const previewTasks = [
-    {
-      title: "Finaliser la proposition client",
-      deadline: "Aujourd'hui 17:00",
-      priority: "Haute",
-      style: "bg-red-500/20 text-red-100",
-    },
-    {
-      title: "Planifier le sprint de la semaine",
-      deadline: "Demain 09:30",
-      priority: "Moyenne",
-      style: "bg-amber-400/20 text-amber-100",
-    },
-    {
-      title: "Classer les idees backlog",
-      deadline: "Vendredi",
-      priority: "Basse",
-      style: "bg-emerald-500/20 text-emerald-100",
-    },
-  ];
+import { useEffect, useState } from "react";
+import AuthGuard from "../components/AuthGuard";
+import { useAuth } from "../contexts/AuthContext";
+import { subscribeToTasks } from "../services/taskService";
+
+function HomeContent() {
+  const { user } = useAuth();
+  const [previewTasks, setPreviewTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const unsubscribe = subscribeToTasks(user.uid, (tasks) => {
+        setPreviewTasks(tasks.slice(0, 3));
+        setLoading(false);
+      });
+
+      return unsubscribe;
+    } catch {
+      setLoading(false);
+    }
+  }, [user?.uid]);
+
+  const priorityDisplay = {
+    high: { label: "Haute", style: "bg-red-500/20 text-red-100" },
+    medium: { label: "Moyenne", style: "bg-amber-400/20 text-amber-100" },
+    low: { label: "Basse", style: "bg-emerald-500/20 text-emerald-100" },
+  };
 
   return (
     <AuthGuard>
@@ -66,20 +78,33 @@ export default function Home() {
             </a>
           </div>
           <div className="space-y-3">
-            {previewTasks.map((task) => (
-              <div
-                key={task.title}
-                className="flex items-center justify-between gap-3 rounded-2xl bg-white/6 p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-base font-semibold text-white">{task.title}</p>
-                  <p className="text-sm text-white/65">Echeance: {task.deadline}</p>
+            {loading ? (
+              <p className="text-sm text-white/70">Chargement...</p>
+            ) : previewTasks.length > 0 ? (
+              previewTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-white/6 p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-base font-semibold text-white">{task.title}</p>
+                    {task.description ? (
+                      <p className="mt-1 line-clamp-1 text-xs text-white/60">{task.description}</p>
+                    ) : null}
+                    <p className="text-sm text-white/65">{task.completed ? "Completee" : "En cours"}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] ${priorityDisplay[task.priority]?.style || priorityDisplay.medium.style}`}>
+                    {priorityDisplay[task.priority]?.label || "Moyenne"}
+                  </span>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] ${task.style}`}>
-                  {task.priority}
-                </span>
+              ))
+            ) : (
+              <div
+                className="rounded-2xl bg-white/5 p-4 text-center text-sm text-white/70"
+              >
+                Aucune tache pour le moment. Commence par en creer une !
               </div>
-            ))}
+            )}
           </div>
         </article>
 
@@ -149,4 +174,8 @@ export default function Home() {
       </section>
     </AuthGuard>
   );
+}
+
+export default function Home() {
+  return <HomeContent />;
 }
