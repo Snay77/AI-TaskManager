@@ -78,10 +78,24 @@ function normalizeSharedTask(docSnapshot) {
 
 function getFirestoreErrorMessage(error) {
   if (!error || typeof error !== "object") {
-    return "Une erreur est survenue lors de la gestion des listes partagees. Veuillez reessayer.";
+    return "Une erreur est survenue. Veuillez réessayer.";
   }
 
-  return error.message || "Une erreur est survenue lors de la gestion des listes partagees. Veuillez reessayer.";
+  // Vérifier le code d'erreur Firestore
+  const code = error.code || "unknown";
+
+  switch (code) {
+    case "permission-denied":
+      return "Accès refusé. Vous n'avez pas la permission d'effectuer cette action.";
+    case "not-found":
+      return "Cette ressource n'existe plus.";
+    case "unavailable":
+      return "Service temporairement indisponible. Vérifiez votre connexion.";
+    case "unauthenticated":
+      return "Vous devez être connecté pour effectuer cette action.";
+    default:
+      return error.message || "Une erreur est survenue. Veuillez réessayer.";
+  }
 }
 
 async function getUserIdByEmail(email) {
