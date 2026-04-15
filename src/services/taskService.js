@@ -131,7 +131,7 @@ export async function deleteTask(userId, taskId) {
   }
 }
 
-export function subscribeToTasks(userId, callback) {
+export function subscribeToTasks(userId, callback, onError) {
   try {
     const tasksQuery = query(getTaskCollectionRef(userId), orderBy("createdAt", "desc"));
 
@@ -143,7 +143,9 @@ export function subscribeToTasks(userId, callback) {
       },
       (error) => {
         callback([]);
-        console.error(getFirestoreErrorMessage(error));
+        if (typeof onError === "function") {
+          onError(getFirestoreErrorMessage(error));
+        }
       }
     );
   } catch (error) {
