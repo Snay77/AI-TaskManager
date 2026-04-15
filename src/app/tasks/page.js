@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import AddTaskForm from "../../components/AddTaskForm";
+import Dashboard from "../../components/Dashboard";
 import FilterBar from "../../components/FilterBar";
 import SearchBar from "../../components/SearchBar";
 import TaskList from "../../components/TaskList";
@@ -149,6 +150,10 @@ export default function TasksPage() {
       </header>
 
       <AddTaskForm onAddTask={addTask} />
+
+      <div className="mt-4 sm:mt-5">
+        <Dashboard tasks={tasks} />
+      </div>
 
       <div className="mt-4 sm:mt-5">
         <SearchBar
