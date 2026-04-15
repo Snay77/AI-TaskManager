@@ -19,6 +19,8 @@ function TaskItem({
   dueDate,
   priority,
   completed,
+  addedBy,
+  addedByLabel,
   onToggle,
   onDelete,
 }) {
@@ -68,6 +70,12 @@ function TaskItem({
               }`}
             >
               Echeance: {new Date(dueDate).toLocaleDateString("fr-FR")}
+            </p>
+          ) : null}
+
+          {addedBy ? (
+            <p className="mt-2 text-xs font-medium uppercase tracking-[0.08em] text-white/55">
+              Ajoutée par: {addedByLabel || addedBy}
             </p>
           ) : null}
 

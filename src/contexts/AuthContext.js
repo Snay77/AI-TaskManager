@@ -9,6 +9,11 @@ import {
   signOut as firebaseSignOut,
 } from "firebase/auth";
 import {
+  doc,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+import {
   createContext,
   useCallback,
   useContext,
@@ -16,7 +21,23 @@ import {
   useMemo,
   useState,
 } from "react";
-import { auth } from "../lib/firebase";
+import { auth, db } from "../lib/firebase";
+
+async function ensureUserDocument(currentUser) {
+  if (!currentUser?.uid) {
+    return;
+  }
+
+  await setDoc(
+    doc(db, "users", currentUser.uid),
+    {
+      email: currentUser.email?.toLowerCase() ?? "",
+      displayName: currentUser.displayName ?? "",
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
 
 const AuthContext = createContext(undefined);
 
@@ -48,6 +69,9 @@ export function AuthProvider({ children }) {
       auth,
       (currentUser) => {
         setUser(currentUser);
+        if (currentUser) {
+          ensureUserDocument(currentUser).catch(() => {});
+        }
         setLoading(false);
       },
       (firebaseError) => {
@@ -64,6 +88,7 @@ export function AuthProvider({ children }) {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await ensureUserDocument(userCredential.user);
       return userCredential;
     } catch (firebaseError) {
       setError(getFirebaseErrorMessage(firebaseError));
@@ -76,6 +101,7 @@ export function AuthProvider({ children }) {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await ensureUserDocument(userCredential.user);
       return userCredential;
     } catch (firebaseError) {
       setError(getFirebaseErrorMessage(firebaseError));
@@ -90,6 +116,7 @@ export function AuthProvider({ children }) {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
       const userCredential = await signInWithPopup(auth, provider);
+      await ensureUserDocument(userCredential.user);
       return userCredential;
     } catch (firebaseError) {
       setError(getFirebaseErrorMessage(firebaseError));

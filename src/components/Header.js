@@ -1,5 +1,5 @@
 import Link from "next/link";
-import UserMenu from "./UserMenu";
+import Navigation from "./Navigation";
 
 export default function Header() {
   return (
@@ -8,21 +8,7 @@ export default function Header() {
         <Link href="/" className="brand">
           TaskForce
         </Link>
-        <nav className="nav-links" aria-label="Navigation principale">
-          <Link href="/" className="nav-link">
-            Accueil
-          </Link>
-          <Link href="/tasks" className="nav-link">
-            Tasks
-          </Link>
-          <Link href="/contact" className="nav-link">
-            Contact
-          </Link>
-          <Link href="/profile" className="nav-link">
-            Profil
-          </Link>
-        </nav>
-        <UserMenu />
+        <Navigation />
       </div>
     </header>
   );
