@@ -10,6 +10,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Frontend mode guide: `docs/agents/frontend.md`
 - Reviewer mode guide: `docs/agents/reviewer.md`
 - Git assistant mode guide: `docs/agents/git-assistant.md`
+- Prompt cheatsheet: `docs/agents/prompt-cheatsheet.md`
 
 Suggested usage:
 - Ask for frontend work explicitly to apply frontend mode guidance.

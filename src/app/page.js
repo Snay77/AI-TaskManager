@@ -1,3 +1,5 @@
+import AuthGuard from "../components/AuthGuard";
+
 export default function Home() {
   const previewTasks = [
     {
@@ -21,7 +23,8 @@ export default function Home() {
   ];
 
   return (
-    <section className="mx-auto w-full max-w-[1140px] px-3 pb-28 pt-6 sm:px-4">
+    <AuthGuard>
+      <section className="mx-auto w-full max-w-285 px-3 pb-28 pt-6 sm:px-4">
       <div className="rounded-3xl bg-linear-to-br from-violet-700/25 via-slate-950 to-black p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] sm:p-10">
         <span className="inline-flex rounded-full bg-violet-500/25 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-violet-100">
           TaskForce
@@ -143,6 +146,7 @@ export default function Home() {
           Aller a Contact
         </a>
       </article>
-    </section>
+      </section>
+    </AuthGuard>
   );
 }

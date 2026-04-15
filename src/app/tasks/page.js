@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import AddTaskForm from "../../components/AddTaskForm";
+import AuthGuard from "../../components/AuthGuard";
 import Dashboard from "../../components/Dashboard";
 import FilterBar from "../../components/FilterBar";
 import SearchBar from "../../components/SearchBar";
@@ -133,7 +134,8 @@ export default function TasksPage() {
   }, []);
 
   return (
-    <section className="mx-auto w-full max-w-[1140px] px-3 pb-28 pt-6 sm:px-4">
+    <AuthGuard>
+      <section className="mx-auto w-full max-w-[1140px] px-3 pb-28 pt-6 sm:px-4">
       <header className="rounded-3xl bg-linear-to-br from-violet-600/20 via-slate-950 to-slate-900 p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-widest text-violet-200">
           TaskForce / Liste des taches
@@ -179,6 +181,7 @@ export default function TasksPage() {
       <div className="mt-4 sm:mt-5">
         <TaskList tasks={filteredTasks} onToggle={toggleTask} onDelete={deleteTask} />
       </div>
-    </section>
+      </section>
+    </AuthGuard>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import UserMenu from "./UserMenu";
 
 export default function Header() {
   return (
@@ -21,6 +22,7 @@ export default function Header() {
             Profil
           </Link>
         </nav>
+        <UserMenu />
       </div>
     </header>
   );

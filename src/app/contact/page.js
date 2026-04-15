@@ -1,3 +1,4 @@
+import AuthGuard from "../../components/AuthGuard";
 import ContactPageClient from "./ContactPageClient";
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function ContactPage() {
-  return <ContactPageClient />;
+  return (
+    <AuthGuard>
+      <ContactPageClient />
+    </AuthGuard>
+  );
 }
