@@ -1,18 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export default function CreateListForm({ onCreateList }) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({ name: false });
+  const nameInputRef = useRef(null);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     const cleanName = name.trim();
+    const nextFieldErrors = { name: !cleanName };
+    setFieldErrors(nextFieldErrors);
 
     if (!cleanName) {
       setError("Le nom de la liste est obligatoire.");
+      nameInputRef.current?.focus();
       return;
     }
 
@@ -41,10 +46,14 @@ export default function CreateListForm({ onCreateList }) {
         </label>
         <input
           id="shared-list-name"
+          ref={nameInputRef}
           type="text"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="Nom de la liste"
+          required
+          aria-invalid={fieldErrors.name}
+          aria-describedby={fieldErrors.name ? "shared-list-name-error" : undefined}
           disabled={loading}
           className="h-11 flex-1 rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/10 placeholder:text-white/45 focus:ring-lime-300/60"
         />
@@ -56,6 +65,12 @@ export default function CreateListForm({ onCreateList }) {
           {loading ? "Création..." : "Créer"}
         </button>
       </div>
+
+      {fieldErrors.name ? (
+        <p id="shared-list-name-error" className="mt-2 text-xs font-semibold text-red-200">
+          Le nom de la liste est obligatoire.
+        </p>
+      ) : null}
 
       {error ? (
         <p className="mt-3 rounded-xl bg-red-500/15 px-4 py-3 text-sm font-semibold text-red-200" role="alert">

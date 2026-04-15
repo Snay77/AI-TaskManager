@@ -16,6 +16,23 @@ const priorityRank = {
   high: 3,
 };
 
+function toComparableDate(value) {
+  if (!value) {
+    return new Date(0);
+  }
+
+  if (typeof value?.toDate === "function") {
+    return value.toDate();
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date(0);
+  }
+
+  return parsed;
+}
+
 export default function TasksPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
@@ -34,10 +51,17 @@ export default function TasksPage() {
     }
 
     try {
-      const unsubscribe = subscribeToTasks(user.uid, (freshTasks) => {
-        setTasks(freshTasks);
-        setLoading(false);
-      });
+      const unsubscribe = subscribeToTasks(
+        user.uid,
+        (freshTasks) => {
+          setTasks(freshTasks);
+          setLoading(false);
+        },
+        (message) => {
+          setError(message);
+          setLoading(false);
+        }
+      );
 
       return unsubscribe;
     } catch (err) {
@@ -77,8 +101,8 @@ export default function TasksPage() {
     const copy = [...filteredByStatus];
     if (sortOrder === "date") {
       const sortedByDate = copy.sort((a, b) => {
-        const aDate = new Date(a.date || a.createdAt);
-        const bDate = new Date(b.date || b.createdAt);
+        const aDate = toComparableDate(a.dueDate || a.createdAt);
+        const bDate = toComparableDate(b.dueDate || b.createdAt);
         return bDate - aDate;
       });
       return dateDirection === "desc" ? sortedByDate : sortedByDate.reverse();
@@ -115,6 +139,17 @@ export default function TasksPage() {
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur lors de la suppression.");
       }
+    },
+    [user?.uid]
+  );
+
+  const handleEditTask = useCallback(
+    async (id, updates) => {
+      if (!user?.uid) {
+        throw new Error("Utilisateur non identifie.");
+      }
+
+      await updateTask(user.uid, id, updates);
     },
     [user?.uid]
   );
@@ -198,7 +233,12 @@ export default function TasksPage() {
             <p className="mt-3 text-base font-medium">Chargement de tes taches...</p>
           </div>
         ) : (
-          <TaskList tasks={filteredTasks} onToggle={toggleTask} onDelete={handleDeleteTask} />
+          <TaskList
+            tasks={filteredTasks}
+            onToggle={toggleTask}
+            onDelete={handleDeleteTask}
+            onUpdate={handleEditTask}
+          />
         )}
       </div>
       </section>

@@ -83,9 +83,16 @@ export default function LoginForm() {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="vous@exemple.com"
             autoComplete="email"
+            required
             aria-invalid={fieldErrors.email}
+            aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
             className="h-11 w-full rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/12 placeholder:text-white/45 focus:ring-lime-300/60"
           />
+          {fieldErrors.email ? (
+            <p id="login-email-error" className="mt-2 text-xs font-semibold text-red-200">
+              L'e-mail est obligatoire.
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -99,9 +106,16 @@ export default function LoginForm() {
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Votre mot de passe"
             autoComplete="current-password"
+            required
             aria-invalid={fieldErrors.password}
+            aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
             className="h-11 w-full rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/12 placeholder:text-white/45 focus:ring-lime-300/60"
           />
+          {fieldErrors.password ? (
+            <p id="login-password-error" className="mt-2 text-xs font-semibold text-red-200">
+              Le mot de passe est obligatoire.
+            </p>
+          ) : null}
         </div>
 
         <button

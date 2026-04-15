@@ -7,6 +7,7 @@ import SharedListCard from "../../components/SharedListCard";
 import SharedListView from "../../components/SharedListView";
 import { useAuth } from "../../contexts/AuthContext";
 import {
+  SHARED_LIST_ROLES,
   addMemberToList,
   addSharedTask,
   createSharedList,
@@ -16,13 +17,22 @@ import {
   removeMemberFromList,
   subscribeToSharedLists,
   subscribeToSharedTasks,
+  updateMemberRole,
   updateSharedTask,
 } from "../../services/sharedListService";
 import { db } from "../../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-function buildMemberProfiles(memberIds) {
-  return Promise.all(
+function getFallbackRole(memberId, ownerId) {
+  if (memberId === ownerId) {
+    return SHARED_LIST_ROLES.OWNER;
+  }
+
+  return SHARED_LIST_ROLES.EDITOR;
+}
+
+async function buildMemberProfiles(memberIds, memberRoles, ownerId) {
+  const results = await Promise.allSettled(
     memberIds.map(async (memberId) => {
       const snapshot = await getDoc(doc(db, "users", memberId));
       const data = snapshot.exists() ? snapshot.data() : null;
@@ -30,9 +40,23 @@ function buildMemberProfiles(memberIds) {
       return {
         id: memberId,
         email: data?.email || memberId,
+        role: memberRoles?.[memberId] || getFallbackRole(memberId, ownerId),
       };
     })
   );
+
+  return results.map((result, index) => {
+    if (result.status === "fulfilled") {
+      return result.value;
+    }
+
+    const fallbackId = memberIds[index];
+    return {
+      id: fallbackId,
+      email: fallbackId,
+      role: memberRoles?.[fallbackId] || getFallbackRole(fallbackId, ownerId),
+    };
+  });
 }
 
 export default function SharedPage() {
@@ -45,6 +69,7 @@ export default function SharedPage() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmDeleteListId, setConfirmDeleteListId] = useState(null);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -53,10 +78,18 @@ export default function SharedPage() {
     }
 
     try {
-      const unsubscribe = subscribeToSharedLists(user.uid, (lists) => {
-        setSharedLists(lists);
-        setLoading(false);
-      });
+      const unsubscribe = subscribeToSharedLists(
+        user.uid,
+        (lists) => {
+          setSharedLists(lists);
+          setError(null);
+          setLoading(false);
+        },
+        (message) => {
+          setError(message);
+          setLoading(false);
+        }
+      );
 
       return unsubscribe;
     } catch (listError) {
@@ -74,27 +107,35 @@ export default function SharedPage() {
         return;
       }
 
-      try {
-        const statsEntries = await Promise.all(
-          sharedLists.map(async (list) => {
-            const tasks = await getSharedListTasks(list.id);
-            return [
-              list.id,
-              {
-                taskCount: tasks.length,
-                completedTaskCount: tasks.filter((task) => task.completed).length,
-              },
-            ];
-          })
-        );
+      const statsResults = await Promise.allSettled(
+        sharedLists.map(async (list) => {
+          const tasks = await getSharedListTasks(list.id);
+          return [
+            list.id,
+            {
+              taskCount: tasks.length,
+              completedTaskCount: tasks.filter((task) => task.completed).length,
+            },
+          ];
+        })
+      );
 
-        if (active) {
-          setListStats(Object.fromEntries(statsEntries));
-        }
-      } catch (statsError) {
-        if (active) {
-          setError(statsError instanceof Error ? statsError.message : "Impossible de calculer les statistiques des listes.");
-        }
+      if (active) {
+        const safeStatsEntries = statsResults.map((result, index) => {
+          if (result.status === "fulfilled") {
+            return result.value;
+          }
+
+          return [
+            sharedLists[index].id,
+            {
+              taskCount: 0,
+              completedTaskCount: 0,
+            },
+          ];
+        });
+
+        setListStats(Object.fromEntries(safeStatsEntries));
       }
     };
 
@@ -124,6 +165,32 @@ export default function SharedPage() {
     [displayLists, selectedListId]
   );
 
+  const currentUserRole = useMemo(() => {
+    if (!selectedList || !user?.uid) {
+      return null;
+    }
+
+    if (selectedList.ownerId === user.uid) {
+      return SHARED_LIST_ROLES.OWNER;
+    }
+
+    return selectedList.memberRoles?.[user.uid] || SHARED_LIST_ROLES.EDITOR;
+  }, [selectedList, user?.uid]);
+
+  useEffect(() => {
+    if (!selectedListId) {
+      return;
+    }
+
+    const stillExists = sharedLists.some((list) => list.id === selectedListId);
+    if (!stillExists) {
+      setSelectedListId(null);
+      setSelectedTasks([]);
+      setSelectedMembers([]);
+      setError("Cette liste n'existe plus.");
+    }
+  }, [selectedListId, sharedLists]);
+
   useEffect(() => {
     if (!selectedBaseList) {
       setSelectedTasks([]);
@@ -137,7 +204,11 @@ export default function SharedPage() {
     const loadMembers = async () => {
       try {
         const memberIds = Array.from(new Set([selectedBaseList.ownerId, ...(selectedBaseList.members || [])]));
-        const profiles = await buildMemberProfiles(memberIds);
+        const profiles = await buildMemberProfiles(
+          memberIds,
+          selectedBaseList.memberRoles,
+          selectedBaseList.ownerId
+        );
 
         if (active) {
           setSelectedMembers(profiles);
@@ -152,21 +223,33 @@ export default function SharedPage() {
     loadMembers();
 
     try {
-      const unsubscribe = subscribeToSharedTasks(selectedBaseList.id, (tasks) => {
-        if (!active) {
-          return;
-        }
+      const unsubscribe = subscribeToSharedTasks(
+        selectedBaseList.id,
+        (tasks) => {
+          if (!active) {
+            return;
+          }
 
-        setSelectedTasks(tasks);
-        setListStats((current) => ({
-          ...current,
-          [selectedBaseList.id]: {
-            taskCount: tasks.length,
-            completedTaskCount: tasks.filter((task) => task.completed).length,
-          },
-        }));
-        setDetailLoading(false);
-      });
+          setSelectedTasks(tasks);
+          setError(null);
+          setListStats((current) => ({
+            ...current,
+            [selectedBaseList.id]: {
+              taskCount: tasks.length,
+              completedTaskCount: tasks.filter((task) => task.completed).length,
+            },
+          }));
+          setDetailLoading(false);
+        },
+        (message) => {
+          if (!active) {
+            return;
+          }
+
+          setError(message);
+          setDetailLoading(false);
+        }
+      );
 
       return () => {
         active = false;
@@ -203,6 +286,7 @@ export default function SharedPage() {
         throw new Error("Utilisateur non identifie.");
       }
 
+      setError(null);
       await createSharedList(user.uid, name);
     },
     [user?.uid]
@@ -220,13 +304,13 @@ export default function SharedPage() {
 
   const handleAddMember = useCallback(
     async (email) => {
-      if (!selectedList?.id) {
+      if (!selectedList?.id || !user?.uid) {
         throw new Error("Aucune liste sélectionnée.");
       }
 
-      await addMemberToList(selectedList.id, email);
+      await addMemberToList(selectedList.id, email, user.uid);
     },
-    [selectedList?.id]
+    [selectedList?.id, user?.uid]
   );
 
   const handleRemoveMember = useCallback(
@@ -260,45 +344,78 @@ export default function SharedPage() {
 
   const handleUpdateTask = useCallback(
     async (taskId, updates) => {
-      if (!selectedList?.id) {
+      if (!selectedList?.id || !user?.uid) {
         throw new Error("Aucune liste sélectionnée.");
       }
 
-      await updateSharedTask(selectedList.id, taskId, updates);
+      await updateSharedTask(selectedList.id, taskId, updates, user.uid);
       await refreshSelectedTasks(selectedList.id);
     },
-    [refreshSelectedTasks, selectedList?.id]
+    [refreshSelectedTasks, selectedList?.id, user?.uid]
   );
 
   const handleDeleteTask = useCallback(
     async (taskId) => {
-      if (!selectedList?.id) {
+      if (!selectedList?.id || !user?.uid) {
         throw new Error("Aucune liste sélectionnée.");
       }
 
-      await deleteSharedTask(selectedList.id, taskId);
+      await deleteSharedTask(selectedList.id, taskId, user.uid);
       await refreshSelectedTasks(selectedList.id);
     },
-    [refreshSelectedTasks, selectedList?.id]
+    [refreshSelectedTasks, selectedList?.id, user?.uid]
   );
 
-  const handleDeleteList = useCallback(
-    async (listId) => {
-      if (!user?.uid) {
-        throw new Error("Utilisateur non identifie.");
+  const handleUpdateMemberRole = useCallback(
+    async (memberId, role) => {
+      if (!selectedList?.id || !user?.uid) {
+        throw new Error("Aucune liste sélectionnée.");
       }
 
-      const confirmed = window.confirm("Supprimer cette liste partagée et toutes ses tâches ?");
-      if (!confirmed) {
-        return;
-      }
+      await updateMemberRole(selectedList.id, memberId, role, user.uid);
+    },
+    [selectedList?.id, user?.uid]
+  );
 
-      await deleteSharedList(listId, user.uid);
-      if (selectedListId === listId) {
+  const requestDeleteList = useCallback((listId) => {
+    setConfirmDeleteListId(listId);
+  }, []);
+
+  const cancelDeleteList = useCallback(() => {
+    setConfirmDeleteListId(null);
+  }, []);
+
+  const confirmDeleteList = useCallback(async () => {
+    if (!confirmDeleteListId) {
+      return;
+    }
+
+    if (!user?.uid) {
+      setError("Utilisateur non identifie.");
+      setConfirmDeleteListId(null);
+      return;
+    }
+
+    try {
+      await deleteSharedList(confirmDeleteListId, user.uid);
+
+      if (selectedListId === confirmDeleteListId) {
         handleBack();
       }
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Erreur lors de la suppression de la liste.");
+    } finally {
+      setConfirmDeleteListId(null);
+    }
+  }, [confirmDeleteListId, handleBack, selectedListId, user?.uid]);
+
+  const handleDeleteDialogKeyDown = useCallback(
+    (event) => {
+      if (event.key === "Escape") {
+        cancelDeleteList();
+      }
     },
-    [handleBack, selectedListId, user?.uid]
+    [cancelDeleteList]
   );
 
   return (
@@ -335,9 +452,11 @@ export default function SharedPage() {
               list={selectedList}
               tasks={currentTaskView}
               currentUserId={user?.uid || ""}
+              currentUserRole={currentUserRole}
               members={selectedMembers}
               onAddMember={handleAddMember}
               onRemoveMember={handleRemoveMember}
+              onUpdateMemberRole={handleUpdateMemberRole}
               onAddTask={handleAddTask}
               onUpdateTask={handleUpdateTask}
               onDeleteTask={handleDeleteTask}
@@ -351,7 +470,7 @@ export default function SharedPage() {
                   list={list}
                   currentUserId={user?.uid || ""}
                   onOpen={() => handleOpenList(list.id)}
-                  onDelete={() => handleDeleteList(list.id)}
+                  onDelete={() => requestDeleteList(list.id)}
                 />
               ))}
             </div>
@@ -365,6 +484,43 @@ export default function SharedPage() {
         {detailLoading && selectedList ? (
           <div className="mt-4 rounded-3xl bg-white/4 p-4 text-center text-sm font-semibold text-white/70 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
             Chargement de la liste partagée...
+          </div>
+        ) : null}
+
+        {confirmDeleteListId ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-delete-title"
+            aria-describedby="confirm-delete-description"
+            onKeyDown={handleDeleteDialogKeyDown}
+          >
+            <div className="w-full max-w-md rounded-3xl bg-slate-900 p-6 shadow-[0_25px_80px_rgba(0,0,0,0.45)] ring-1 ring-white/10">
+              <h2 id="confirm-delete-title" className="text-xl font-extrabold tracking-tight text-white">
+                Supprimer cette liste ?
+              </h2>
+              <p id="confirm-delete-description" className="mt-3 text-sm text-white/75">
+                Cette action est irreversible. Toutes les taches de la liste seront supprimees.
+              </p>
+
+              <div className="mt-6 flex flex-wrap justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={cancelDeleteList}
+                  className="h-11 rounded-xl bg-white/10 px-4 text-sm font-bold uppercase tracking-[0.06em] text-white transition hover:bg-white/15"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteList}
+                  className="h-11 rounded-xl bg-red-500/85 px-4 text-sm font-bold uppercase tracking-[0.06em] text-white transition hover:bg-red-500"
+                >
+                  Confirmer
+                </button>
+              </div>
+            </div>
           </div>
         ) : null}
       </section>

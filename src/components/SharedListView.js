@@ -1,16 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import AddTaskForm from "./AddTaskForm";
 import TaskList from "./TaskList";
+import { SHARED_LIST_ROLES } from "../services/sharedListService";
 
 export default function SharedListView({
   list,
   tasks,
   currentUserId,
+  currentUserRole,
   members,
   onAddMember,
   onRemoveMember,
+  onUpdateMemberRole,
   onAddTask,
   onUpdateTask,
   onDeleteTask,
@@ -19,8 +22,24 @@ export default function SharedListView({
   const [memberEmail, setMemberEmail] = useState("");
   const [memberError, setMemberError] = useState(null);
   const [memberLoading, setMemberLoading] = useState(false);
+  const [memberFieldError, setMemberFieldError] = useState(false);
+  const [roleLoadingId, setRoleLoadingId] = useState(null);
+  const memberEmailRef = useRef(null);
 
   const isOwner = list?.ownerId === currentUserId;
+  const isAdmin = currentUserRole === SHARED_LIST_ROLES.ADMIN;
+  const canManageMembers = isOwner || isAdmin;
+  const canManageTasks =
+    currentUserRole === SHARED_LIST_ROLES.OWNER ||
+    currentUserRole === SHARED_LIST_ROLES.ADMIN ||
+    currentUserRole === SHARED_LIST_ROLES.EDITOR;
+
+  const roleLabels = {
+    [SHARED_LIST_ROLES.OWNER]: "Propriétaire",
+    [SHARED_LIST_ROLES.ADMIN]: "Admin",
+    [SHARED_LIST_ROLES.EDITOR]: "Éditeur",
+    [SHARED_LIST_ROLES.READER]: "Lecteur",
+  };
 
   const memberLabels = useMemo(
     () =>
@@ -38,10 +57,13 @@ export default function SharedListView({
     const cleanEmail = memberEmail.trim();
 
     if (!cleanEmail) {
+      setMemberFieldError(true);
       setMemberError("L'adresse e-mail est obligatoire.");
+      memberEmailRef.current?.focus();
       return;
     }
 
+    setMemberFieldError(false);
     setMemberError(null);
     setMemberLoading(true);
 
@@ -52,6 +74,19 @@ export default function SharedListView({
       setMemberError(addError instanceof Error ? addError.message : "Impossible d'ajouter ce membre.");
     } finally {
       setMemberLoading(false);
+    }
+  };
+
+  const handleRoleChange = async (memberId, nextRole) => {
+    setMemberError(null);
+    setRoleLoadingId(memberId);
+
+    try {
+      await onUpdateMemberRole(memberId, nextRole);
+    } catch (roleError) {
+      setMemberError(roleError instanceof Error ? roleError.message : "Impossible de modifier ce role.");
+    } finally {
+      setRoleLoadingId(null);
     }
   };
 
@@ -81,27 +116,43 @@ export default function SharedListView({
             <span className="text-sm font-semibold text-white/65">{members?.length || 0} personne(s)</span>
           </div>
 
-          <form onSubmit={handleAddMember} className="mt-4 space-y-3" noValidate>
-            <label htmlFor="shared-member-email" className="sr-only">
-              Ajouter un membre par email
-            </label>
-            <input
-              id="shared-member-email"
-              type="email"
-              value={memberEmail}
-              onChange={(event) => setMemberEmail(event.target.value)}
-              placeholder="Email du membre"
-              disabled={memberLoading}
-              className="h-11 w-full rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/10 placeholder:text-white/45 focus:ring-lime-300/60"
-            />
-            <button
-              type="submit"
-              disabled={memberLoading}
-              className="h-11 w-full rounded-xl bg-lime-300 px-5 text-sm font-extrabold uppercase tracking-[0.06em] text-zinc-950 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-65"
-            >
-              {memberLoading ? "Ajout..." : "Ajouter un membre"}
-            </button>
-          </form>
+          {canManageMembers ? (
+            <form onSubmit={handleAddMember} className="mt-4 space-y-3" noValidate>
+              <label htmlFor="shared-member-email" className="sr-only">
+                Ajouter un membre par email
+              </label>
+              <input
+                id="shared-member-email"
+                ref={memberEmailRef}
+                type="email"
+                value={memberEmail}
+                onChange={(event) => setMemberEmail(event.target.value)}
+                placeholder="Email du membre"
+                required
+                aria-invalid={memberFieldError}
+                aria-describedby={memberFieldError ? "shared-member-email-error" : undefined}
+                disabled={memberLoading}
+                className="h-11 w-full rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/10 placeholder:text-white/45 focus:ring-lime-300/60"
+              />
+              <button
+                type="submit"
+                disabled={memberLoading}
+                className="h-11 w-full rounded-xl bg-lime-300 px-5 text-sm font-extrabold uppercase tracking-[0.06em] text-zinc-950 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-65"
+              >
+                {memberLoading ? "Ajout..." : "Ajouter un membre"}
+              </button>
+
+              {memberFieldError ? (
+                <p id="shared-member-email-error" className="text-xs font-semibold text-red-200">
+                  L'adresse e-mail est obligatoire.
+                </p>
+              ) : null}
+            </form>
+          ) : (
+            <p className="mt-4 rounded-xl bg-white/8 px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-white/70">
+              Mode lecture: vous pouvez consulter les membres sans les modifier.
+            </p>
+          )}
 
           {memberError ? (
             <p className="mt-3 rounded-xl bg-red-500/15 px-4 py-3 text-sm font-semibold text-red-200" role="alert">
@@ -113,6 +164,17 @@ export default function SharedListView({
             {(members || []).map((member) => {
               const isCurrentUser = member.id === currentUserId;
               const isListOwner = list?.ownerId === member.id;
+              const memberRole = member.role || (isListOwner ? SHARED_LIST_ROLES.OWNER : SHARED_LIST_ROLES.READER);
+              const canOwnerChangeRole = isOwner && !isListOwner;
+              const canAdminChangeRole = isAdmin && (memberRole === SHARED_LIST_ROLES.EDITOR || memberRole === SHARED_LIST_ROLES.READER);
+              const canChangeRole = canOwnerChangeRole || canAdminChangeRole;
+              const canRemoveMember =
+                canManageMembers &&
+                !isListOwner &&
+                (!isAdmin || memberRole !== SHARED_LIST_ROLES.ADMIN);
+              const roleOptions = isOwner
+                ? [SHARED_LIST_ROLES.ADMIN, SHARED_LIST_ROLES.EDITOR, SHARED_LIST_ROLES.READER]
+                : [SHARED_LIST_ROLES.EDITOR, SHARED_LIST_ROLES.READER];
 
               return (
                 <div
@@ -121,20 +183,42 @@ export default function SharedListView({
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-white">{isCurrentUser ? "Vous" : member.email || member.id}</p>
-                    <p className="text-xs uppercase tracking-[0.08em] text-white/55">
-                      {isListOwner ? "Propriétaire" : "Membre"}
-                    </p>
+                    <p className="text-xs uppercase tracking-[0.08em] text-white/55">{roleLabels[memberRole] || "Membre"}</p>
                   </div>
 
-                  {isOwner && !isListOwner ? (
-                    <button
-                      type="button"
-                      onClick={() => onRemoveMember(member.id)}
-                      className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.06em] text-white transition hover:bg-red-500/25 hover:text-red-100"
-                    >
-                      Retirer
-                    </button>
-                  ) : null}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canChangeRole ? (
+                      <label className="sr-only" htmlFor={`member-role-${member.id}`}>
+                        Modifier le role de {member.email || member.id}
+                      </label>
+                    ) : null}
+
+                    {canChangeRole ? (
+                      <select
+                        id={`member-role-${member.id}`}
+                        value={memberRole}
+                        disabled={roleLoadingId === member.id}
+                        onChange={(event) => handleRoleChange(member.id, event.target.value)}
+                        className="h-9 rounded-xl bg-white/10 px-3 text-xs font-bold uppercase tracking-[0.06em] text-white outline-none ring-1 ring-white/15 focus:ring-lime-300/60"
+                      >
+                        {roleOptions.map((roleValue) => (
+                          <option key={roleValue} value={roleValue} className="bg-slate-950 text-white">
+                            {roleLabels[roleValue] || roleValue}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+
+                    {canRemoveMember ? (
+                      <button
+                        type="button"
+                        onClick={() => onRemoveMember(member.id)}
+                        className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.06em] text-white transition hover:bg-red-500/25 hover:text-red-100"
+                      >
+                        Retirer
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}
@@ -147,12 +231,23 @@ export default function SharedListView({
             <span className="text-sm font-semibold text-white/65">{tasks?.length || 0} tâche(s)</span>
           </div>
 
-          <AddTaskForm onAddTask={onAddTask} />
+          {canManageTasks ? (
+            <AddTaskForm onAddTask={onAddTask} />
+          ) : (
+            <p className="mt-4 rounded-xl bg-white/8 px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-white/70">
+              Mode lecture: seul un editeur, un admin ou le proprietaire peut modifier les taches.
+            </p>
+          )}
 
           <div className="mt-5">
             <TaskList
               tasks={tasks}
+              canManageTasks={canManageTasks}
               onToggle={(taskId) => {
+                if (!canManageTasks) {
+                  return;
+                }
+
                 const task = tasks.find((item) => item.id === taskId);
                 if (!task) {
                   return;
@@ -161,6 +256,7 @@ export default function SharedListView({
                 onUpdateTask(taskId, { completed: !task.completed });
               }}
               onDelete={onDeleteTask}
+              onUpdate={onUpdateTask}
               memberLabels={memberLabels}
             />
           </div>

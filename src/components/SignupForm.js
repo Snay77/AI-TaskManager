@@ -82,9 +82,16 @@ export default function SignupForm() {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="vous@exemple.com"
             autoComplete="email"
+            required
             aria-invalid={fieldErrors.email}
+            aria-describedby={fieldErrors.email ? "signup-email-error" : undefined}
             className="h-11 w-full rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/12 placeholder:text-white/45 focus:ring-lime-300/60"
           />
+          {fieldErrors.email ? (
+            <p id="signup-email-error" className="mt-2 text-xs font-semibold text-red-200">
+              L'e-mail est obligatoire.
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -98,9 +105,16 @@ export default function SignupForm() {
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Minimum 6 caracteres"
             autoComplete="new-password"
+            required
             aria-invalid={fieldErrors.password}
+            aria-describedby={fieldErrors.password ? "signup-password-error" : undefined}
             className="h-11 w-full rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/12 placeholder:text-white/45 focus:ring-lime-300/60"
           />
+          {fieldErrors.password ? (
+            <p id="signup-password-error" className="mt-2 text-xs font-semibold text-red-200">
+              Le mot de passe est obligatoire.
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -114,9 +128,16 @@ export default function SignupForm() {
             onChange={(event) => setConfirmPassword(event.target.value)}
             placeholder="Confirmez votre mot de passe"
             autoComplete="new-password"
+            required
             aria-invalid={fieldErrors.confirmPassword}
+            aria-describedby={fieldErrors.confirmPassword ? "signup-confirm-password-error" : undefined}
             className="h-11 w-full rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/12 placeholder:text-white/45 focus:ring-lime-300/60"
           />
+          {fieldErrors.confirmPassword ? (
+            <p id="signup-confirm-password-error" className="mt-2 text-xs font-semibold text-red-200">
+              La confirmation du mot de passe est obligatoire.
+            </p>
+          ) : null}
         </div>
 
         <button

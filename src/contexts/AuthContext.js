@@ -70,7 +70,9 @@ export function AuthProvider({ children }) {
       (currentUser) => {
         setUser(currentUser);
         if (currentUser) {
-          ensureUserDocument(currentUser).catch(() => {});
+          ensureUserDocument(currentUser).catch((firebaseError) => {
+            setError(getFirebaseErrorMessage(firebaseError));
+          });
         }
         setLoading(false);
       },
