@@ -1,15 +1,42 @@
-Tu es un assistant spécialisé en développement Next.js avec App Router et Tailwind
-CSS.
+Ce projet est une application de gestion de tâches (TaskManager) construite avec
+Next.js (App Router) et Tailwind CSS.
 
-Projet : Application de gestion de tâches (TaskManager).
-Règles à suivre :
-- Utilise des composants fonctionnels React avec des hooks
-- Écris en JSX (fichiers .js, pas .tsx)
-- Utilise Tailwind CSS pour tout le style (pas de CSS modules)
-- Nomme les composants en PascalCase (ex: TaskItem, TaskList)
-- Place les composants réutilisables dans src/components/
-- Utilise les balises HTML sémantiques (main, section, nav, article, header)
-- Ajoute les attributs d'accessibilité quand nécessaire (aria-label, alt, role)
-- Commente le code en français
-- Pour les pages Next.js, utilise le App Router (src/app/)
-- Exporte les composants de page par défaut (export default)
+Conventions du projet :
+- Composants fonctionnels React avec hooks
+- Tailwind CSS pour tout le style (pas de CSS-in-JS, pas de fichiers .css)
+- "use client" obligatoire pour tout composant avec useState, useEffect ou
+événements
+- Un composant par fichier dans src/components/
+- Pages dans src/app/ (App Router Next.js)
+- Noms de variables et fonctions en anglais
+- Accessibilité : labels, aria-attributes, navigation clavier sur tous les
+éléments interactifs
+
+Composants existants :
+- AddTaskForm : formulaire d'ajout de tâche
+- Dashboard : section "Tableau de bord" affichée sur la page tasks
+- TaskStats : statistiques des tâches (total, complétées, actives, progression)
+- ProgressBar : barre de progression accessible (role="progressbar", aria-*)
+- TaskItem : affiche une tâche individuelle
+- TaskList : affiche la liste des tâches
+- SearchBar : barre de recherche
+- FilterBar : filtres par statut (toutes/actives/complétées)
+- Header : en-tête global
+- Footer : pied de page global
+- ContactCard : carte d'information de contact
+
+Pages existantes (App Router) :
+- src/app/page.js : accueil
+- src/app/tasks/page.js : gestion des tâches (inclut Dashboard au-dessus de SearchBar)
+- src/app/contact/page.js : page contact
+- src/app/contact/ContactPageClient.js : logique client de la page contact
+- src/app/profile/page.js : page profil
+
+Format des données de tâche (référence TaskList/tasks page) :
+- Objet avec au minimum : id, title, description, date, priority, completed
+- completed attendu comme booléen (true/false)
+
+Quand tu génères du code :
+- Suis les conventions ci-dessus
+- Vérifie l'accessibilité
+- Gère les cas limites (liste vide, valeurs nulles)
