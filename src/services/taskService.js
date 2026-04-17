@@ -4,6 +4,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -131,9 +132,13 @@ export async function deleteTask(userId, taskId) {
   }
 }
 
-export function subscribeToTasks(userId, callback, onError) {
+export function subscribeToTasks(userId, callback, onError, limitCount) {
   try {
-    const tasksQuery = query(getTaskCollectionRef(userId), orderBy("createdAt", "desc"));
+    const constraints = [orderBy("createdAt", "desc")];
+    if (limitCount && typeof limitCount === "number" && limitCount > 0) {
+      constraints.push(limit(limitCount));
+    }
+    const tasksQuery = query(getTaskCollectionRef(userId), ...constraints);
 
     return onSnapshot(
       tasksQuery,

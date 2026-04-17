@@ -18,9 +18,9 @@ function HomeContent() {
 
     try {
       const unsubscribe = subscribeToTasks(user.uid, (tasks) => {
-        setPreviewTasks(tasks.slice(0, 3));
+        setPreviewTasks(tasks);
         setLoading(false);
-      });
+      }, null, 3);
 
       return unsubscribe;
     } catch {
@@ -77,7 +77,7 @@ function HomeContent() {
               Voir toutes
             </a>
           </div>
-          <div className="space-y-3">
+          <div className="min-h-[180px] space-y-3">
             {loading ? (
               <p className="text-sm text-white/70">Chargement...</p>
             ) : previewTasks.length > 0 ? (
