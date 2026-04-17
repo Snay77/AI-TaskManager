@@ -72,7 +72,7 @@ export default function AddTaskForm({ onAddTask }) {
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder="Titre de la tache"
-            className="h-11 rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/10 placeholder:text-white/45 focus:ring-lime-300/60"
+            className="h-11 w-full rounded-xl bg-white/8 px-4 text-sm font-medium text-white outline-none ring-1 ring-white/10 placeholder:text-white/45 focus:ring-lime-300/60"
             required
             aria-invalid={fieldErrors.title}
             aria-describedby={fieldErrors.title ? "task-title-error" : undefined}
@@ -93,7 +93,7 @@ export default function AddTaskForm({ onAddTask }) {
             id="task-priority"
             value={priority}
             onChange={(event) => setPriority(event.target.value)}
-            className="h-11 rounded-xl bg-violet-600/30 px-3 text-sm font-semibold text-white outline-none ring-1 ring-violet-400/40 focus:ring-lime-300/60"
+            className="h-11 w-full rounded-xl bg-violet-600/30 px-3 text-sm font-semibold text-white outline-none ring-1 ring-violet-400/40 focus:ring-lime-300/60"
             disabled={loading}
           >
             <option value="high" className="bg-slate-950 text-white">
